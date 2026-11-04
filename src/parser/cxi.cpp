@@ -51,7 +51,9 @@ found:
     _rodata.resize(_header.extendedHeader.systemControlInfo.rodata.size);
     file.seekg(codeOffset);
     file.read(reinterpret_cast<char*>(_text.data()), _header.extendedHeader.systemControlInfo.text.size);
+    file.seekg(codeOffset + _header.extendedHeader.systemControlInfo.rodata.address - _header.extendedHeader.systemControlInfo.text.address);
     file.read(reinterpret_cast<char*>(_rodata.data()), _header.extendedHeader.systemControlInfo.rodata.size);
+    file.seekg(codeOffset + _header.extendedHeader.systemControlInfo.data.address - _header.extendedHeader.systemControlInfo.text.address);
     file.read(reinterpret_cast<char*>(_data.data()), _header.extendedHeader.systemControlInfo.data.size);
 }
 

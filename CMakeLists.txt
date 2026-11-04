@@ -14,8 +14,10 @@ add_executable(${PROJECT_NAME}
     src/output/ninja/build_rule.cpp
     src/output/ninja/build_script.cpp
     src/output/ninja/rule.cpp
-    src/output/ldscript/ldscript.cpp
-    src/output/ldscript/ldsection.cpp
+    src/output/scatter/scatter_file.cpp
+    src/output/scatter/load_region.cpp
+    src/output/scatter/execution_region.cpp
+    src/output/scatter/input_section.cpp
     src/parser/function_heuristic.cpp
     src/parser/arm_parser.cpp
     src/parser/cxi.cpp

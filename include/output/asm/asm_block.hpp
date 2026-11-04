@@ -7,7 +7,7 @@
 
 class ASMBlock : public Writable {
     public:
-        ASMBlock(uint8_t *data, size_t size, const std::string &name = "", bool isThumb = true);
+        ASMBlock(uint8_t *data, size_t size, const std::string &name = "", bool isThumb = true, bool entry = false);
         ~ASMBlock() = default;
         const std::string& getName() const;
         const uint8_t *getData() const;
@@ -19,6 +19,7 @@ class ASMBlock : public Writable {
         uint8_t *_data;
         size_t _size;
         bool _isThumb;
+        bool _entry;
 };
 
 

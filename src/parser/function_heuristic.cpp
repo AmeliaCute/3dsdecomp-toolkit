@@ -50,10 +50,8 @@ namespace
 
     cs_mode getNextMode(cs_insn& instruction, cs_mode currentMode)
     {
-        if (!strcmp(instruction.mnemonic, "blx") && instruction.detail->arm.operands[0].type == ARM_OP_IMM) {
-            cs_mode targetMode = instruction.detail->arm.operands[0].imm & 1 ? CS_MODE_THUMB : CS_MODE_ARM;
-            return targetMode;
-        }
+        if (!strcmp(instruction.mnemonic, "blx") && instruction.detail->arm.operands[0].type == ARM_OP_IMM)
+            return currentMode == CS_MODE_ARM ? CS_MODE_THUMB : CS_MODE_ARM;
         return currentMode;
     }
 
@@ -213,47 +211,43 @@ std::vector<Function> function_heuristic::findFunctions(const std::vector<uint8_
     std::sort(context.functions.begin(), context.functions.end(), [](const Function& a, const Function& b) {
         return a.start < b.start;
     });
+    std::sort(context.functions.begin(), context.functions.end(), [](const Function& a, const Function& b) {
+        if (a.start != b.start) return a.start < b.start;
+        return a.end < b.end;
+    });
+(*context.functions).erase(std::unique(context.functions.begin(), context.functions.end(),
+    [](const Function& a, const Function& b) { return a.start == b.start; }),
+    context.functions.end());
     std::cout << "Found " << context.functions.size() << " functions after heuristic search." << std::endl;
-    std::cout << "Removing duplicates from function list." << std::endl;
-    (*context.functions).erase(std::unique(context.functions.begin(), context.functions.end(), [](const Function& a, const Function& b) {
-        return a.start == b.start;
-    }), context.functions.end());
-    std::cout << "Removing overlapping functions from function list." << std::endl;
-    std::vector<Function *> toDelete;
-    for (size_t i = 0; i + 1 < context.functions.size(); i++) {
-        Function& curr = context.functions[i];
-        Function& next = context.functions[i + 1];
-        if (curr.end > next.start) {
-            curr.end = next.start;
+    std::cout << "Merging and cleaning function list." << std::endl;
+    std::vector<Function> fns = *context.functions;
+    std::vector<Function> cleaned;
+    cleaned.reserve(fns.size());
+    auto fixMode = [](Function& f) {
+        if (f.start & 3)
+            f.mode = CS_MODE_THUMB;
+        else if (f.mode == CS_MODE_ARM && (f.end - f.start) % 4 != 0)
+            f.mode = CS_MODE_THUMB;
+    };
+    for (size_t i = 0; i < fns.size(); ++i) {
+        Function f = fns[i];
+        if (i + 1 < fns.size()) {
+            const Function& next = fns[i + 1];
+            if (f.end > next.start)
+                f.end = next.start;
+            fixMode(f);
+            size_t instructionSize = f.mode == CS_MODE_ARM ? 4 : 2;
+            if (f.end - f.start <= instructionSize && f.end == next.start && f.mode == next.mode) {
+                f.end = next.end;
+                if (i + 2 < fns.size() && f.end > fns[i + 2].start)
+                    f.end = fns[i + 2].start;
+                ++i;
+            }
         }
-        size_t size = curr.end - curr.start;
-        size_t instructionSize = curr.mode == CS_MODE_ARM ? 4 : 2;
-        if (size % instructionSize != 0)
-            curr.mode = (curr.mode == CS_MODE_ARM ? CS_MODE_THUMB : CS_MODE_ARM);
-        if (size <= instructionSize && curr.end == next.start) {
-            curr.end = next.end;
-            curr.mode = next.mode;
-            toDelete.push_back(&next);
-        }
+        fixMode(f);
+        cleaned.push_back(f);
     }
-    for (Function* func : toDelete) {
-        (*context.functions).erase(std::remove_if(context.functions.begin(), context.functions.end(), [&](const Function& f) {
-            return &f == func;
-        }), context.functions.end());
-    }
-    auto sorted = *context.functions;
-    std::cout << "Removing functions that are fully contained in other functions from function list." << std::endl;
-    (*context.functions).erase(std::remove_if(context.functions.begin(), context.functions.end(), [&](const Function& f) {
-        auto it = std::lower_bound(sorted.begin(), sorted.end(), f, [](const Function& a, const Function& b) {
-            return a.start < b.start;
-        });
-        if (it != sorted.begin()) {
-            --it;
-            if (f.start >= it->start && f.end <= it->end && f.start != it->start)
-                return true;
-        }
-        return false;
-    }), context.functions.end());
+    *context.functions = std::move(cleaned);
     std::cout << "Heuristic function search completed. Found " << context.functions.size() << " functions." << std::endl;
     return *context.functions;
 }
