@@ -73,19 +73,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: latest
     steps:
-      - name: Set up date-based tag
-        run: echo "TAG_NAME=v$(date +'%Y%m%d.%H%M')" >> "$GITHUB_ENV"
-
       - uses: actions/download-artifact@v4
-
-      - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${GITHUB_SHA::5}
-          target_commitish: ${{ github.sha }}
-          body: "Automated release of ${{ github.ref_name }}."
-          generate_release_notes: true
-          files: |
-            3dsdecomp-toolkit-linux-x86_64/3dsdecomp-toolkit
-            3dsdecomp-toolkit-windows-x86_64/3dsdecomp-toolkit.exe
+          path: dist
+
+      - name: Collect
+        run: |
+          mkdir release
+          mv dist/3dsdecomp-toolkit-linux-x86_64/3dsdecomp-toolkit release/3dsdecomp-toolkit-linux-x86_64
+          mv dist/3dsdecomp-toolkit-windows-x86_64/3dsdecomp-toolkit.exe release/3dsdecomp-toolkit-windows-x86_64.exe
+          chmod +x release/3dsdecomp-toolkit-linux-x86_64
+
+      - name: Publish
+        run: |
+          notes="Built from ${GITHUB_SHA::7} on main."
+
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" release/* --target "$GITHUB_SHA" --title "latest" --notes "$notes" --latest
+            exit 0
+          fi
+
+          gh api -X PATCH "repos/$GH_REPO/git/refs/tags/$TAG" -f sha="$GITHUB_SHA" -F force=true > /dev/null
+          gh release upload "$TAG" release/* --clobber
+          gh release edit "$TAG" --notes "$notes" --latest
 
