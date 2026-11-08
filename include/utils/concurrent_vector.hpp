@@ -1,8 +1,11 @@
 #ifndef CONCURRENT_VECTOR_HPP_
 #define CONCURRENT_VECTOR_HPP_
 
-#include <vector>
+#include <algorithm>
+#include <cstddef>
 #include <shared_mutex>
+#include <utility>
+#include <vector>
 
 template<typename T>
 class ConcurrentVector

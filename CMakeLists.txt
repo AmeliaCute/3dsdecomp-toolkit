@@ -33,9 +33,10 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(capstone)
 
+find_package(Threads REQUIRED)
 
 target_include_directories(${PROJECT_NAME} PUBLIC include)
-target_link_libraries(${PROJECT_NAME} PRIVATE capstone)
+target_link_libraries(${PROJECT_NAME} PRIVATE capstone Threads::Threads)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

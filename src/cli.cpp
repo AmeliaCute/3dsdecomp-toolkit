@@ -5,6 +5,8 @@
 #include "parser/cxi.hpp"
 #include "parser/function_heuristic.hpp"
 #include <filesystem>
+#include <format>
+#include <iostream>
 #include "output/asm/asm_file.hpp"
 #include "output/scatter/scatter_file.hpp"
 
@@ -61,7 +63,14 @@ void splitFunctions(std::vector<Function> &functions, ExecutionRegion &textER, B
 
 int main(int argc, char* argv[])
 {
-    CXI cxi("../../test/ac.3ds");
+    if (argc <= 1)
+    {
+        std::cerr << "no .3ds file: 3dsdecomp-toolkit path/to/the/rom.3ds" << std::endl;
+        return 1;
+    }
+
+    std::string romPath(argv[1]);
+    CXI cxi(romPath);
     auto functions = function_heuristic::findFunctions(cxi.getTextSection(), cxi.getHeader().extendedHeader.systemControlInfo.text.address);
     std::filesystem::create_directory("output");
     uintptr_t lastAddress = 0;
